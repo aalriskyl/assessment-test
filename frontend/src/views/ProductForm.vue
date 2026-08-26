@@ -1,160 +1,156 @@
 <template>
-  <div class="card form-card mx-auto">
-    <h2>{{ isEdit ? 'Edit Product' : 'Create New Product' }}</h2>
-    
-    <div v-if="error" class="error-msg mb-4">
-      {{ error }}
-    </div>
-
-    <form @submit.prevent="submitForm">
-      <div class="form-group">
-        <label for="name">Product Name *</label>
-        <input 
-          type="text" 
-          id="name" 
-          v-model="product.name" 
-          class="form-control" 
-          required 
-          placeholder="e.g. Wireless Headphones"
-        />
-      </div>
-
-      <div class="form-group">
-        <label for="price">Price *</label>
-        <div class="price-input flex items-center">
-          <span class="currency-symbol">$</span>
-          <input 
-            type="number" 
-            id="price" 
-            v-model="product.price" 
-            class="form-control" 
-            required 
-            min="0" 
-            step="0.01" 
-            placeholder="0.00"
-          />
+  <div class="max-w-2xl mx-auto py-8">
+    <Card class="border shadow-md">
+      <CardHeader>
+        <CardTitle class="text-2xl">{{ isEdit ? 'Edit Product' : 'Create New Product' }}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div v-if="error" class="mb-6 p-4 rounded-md bg-destructive/10 text-destructive border border-destructive/20 text-sm font-medium">
+          {{ error }}
         </div>
-      </div>
 
-      <div class="form-group">
-        <label for="description">Description</label>
-        <textarea 
-          id="description" 
-          v-model="product.description" 
-          class="form-control" 
-          placeholder="Detailed description of the product..."
-        ></textarea>
-      </div>
+        <form @submit.prevent="promptSave" class="space-y-6">
+          <div class="space-y-2">
+            <label for="name" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              Product Name <span class="text-destructive">*</span>
+            </label>
+            <Input 
+              id="name" 
+              v-model="product.name" 
+              required 
+              placeholder="e.g. Wireless Headphones" 
+            />
+          </div>
 
-      <div class="form-actions flex items-center justify-between mt-4">
-        <router-link to="/" class="btn btn-secondary">Cancel</router-link>
-        <button type="submit" class="btn btn-primary" :disabled="loading">
-          {{ loading ? 'Saving...' : (isEdit ? 'Update Product' : 'Create Product') }}
-        </button>
-      </div>
-    </form>
+          <div class="space-y-2">
+            <label for="price" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              Price <span class="text-destructive">*</span>
+            </label>
+            <div class="relative">
+              <span class="absolute left-3 top-2.5 text-muted-foreground">$</span>
+              <Input 
+                id="price" 
+                type="number" 
+                v-model="product.price" 
+                required 
+                min="0" 
+                step="0.01" 
+                placeholder="0.00" 
+                class="pl-7"
+              />
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label for="description" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              Description
+            </label>
+            <Textarea 
+              id="description" 
+              v-model="product.description" 
+              placeholder="Detailed description of the product..." 
+              class="resize-y"
+            />
+          </div>
+        </form>
+      </CardContent>
+      <CardFooter class="flex justify-between border-t bg-muted/20 px-6 py-4">
+        <router-link to="/">
+          <Button variant="outline" type="button">Cancel</Button>
+        </router-link>
+        <Button @click="promptSave" :disabled="loading" type="button">
+          {{ isEdit ? 'Update Product' : 'Create Product' }}
+        </Button>
+      </CardFooter>
+    </Card>
+
+    <ConfirmDialog 
+      :isOpen="saveDialog.isOpen"
+      :title="isEdit ? 'Update Product' : 'Create Product'"
+      :description="isEdit ? 'Are you sure you want to update this product\'s details?' : 'Are you sure you want to create this new product?'"
+      :confirmText="isEdit ? 'Update' : 'Create'"
+      :loading="saveDialog.loading"
+      @confirm="executeSave"
+      @cancel="saveDialog.isOpen = false"
+    />
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref, computed, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import api from '../services/api';
+import Card from '../components/ui/card/Card.vue';
+import CardHeader from '../components/ui/card/CardHeader.vue';
+import CardTitle from '../components/ui/card/CardTitle.vue';
+import CardContent from '../components/ui/card/CardContent.vue';
+import CardFooter from '../components/ui/card/CardFooter.vue';
+import Button from '../components/ui/button/Button.vue';
+import Input from '../components/ui/input/Input.vue';
+import Textarea from '../components/ui/textarea/Textarea.vue';
+import ConfirmDialog from '../components/ConfirmDialog.vue';
 
-export default {
-  name: 'ProductForm',
-  props: {
-    id: {
-      type: String,
-      default: null
-    }
-  },
-  data() {
-    return {
-      product: {
-        name: '',
-        price: '',
-        description: ''
-      },
-      loading: false,
-      error: null
-    }
-  },
-  computed: {
-    isEdit() {
-      return !!this.id;
-    }
-  },
-  async mounted() {
-    if (this.isEdit) {
-      await this.fetchProduct();
-    }
-  },
-  methods: {
-    async fetchProduct() {
-      this.loading = true;
-      try {
-        const response = await api.getProduct(this.id);
-        this.product = response.data;
-      } catch (err) {
-        console.error(err);
-        this.error = 'Failed to load product details.';
-      } finally {
-        this.loading = false;
-      }
-    },
-    async submitForm() {
-      this.loading = true;
-      this.error = null;
-      try {
-        if (this.isEdit) {
-          await api.updateProduct(this.id, this.product);
-        } else {
-          await api.createProduct(this.product);
-        }
-        this.$router.push('/');
-      } catch (err) {
-        console.error(err);
-        this.error = 'Failed to save product. Please ensure all fields are valid.';
-      } finally {
-        this.loading = false;
-      }
-    }
+const props = defineProps({
+  id: {
+    type: String,
+    default: null
   }
-}
+});
+
+const router = useRouter();
+const product = ref({ name: '', price: '', description: '' });
+const loading = ref(false);
+const error = ref(null);
+const saveDialog = ref({ isOpen: false, loading: false });
+
+const isEdit = computed(() => !!props.id);
+
+const fetchProduct = async () => {
+  loading.value = true;
+  try {
+    const response = await api.getProduct(props.id);
+    product.value = response.data;
+  } catch (err) {
+    console.error(err);
+    error.value = 'Failed to load product details.';
+  } finally {
+    loading.value = false;
+  }
+};
+
+const promptSave = () => {
+  // basic validation
+  if (!product.value.name || !product.value.price) {
+    error.value = 'Please fill out all required fields.';
+    return;
+  }
+  error.value = null;
+  saveDialog.value = { isOpen: true, loading: false };
+};
+
+const executeSave = async () => {
+  saveDialog.value.loading = true;
+  loading.value = true;
+  error.value = null;
+  try {
+    if (isEdit.value) {
+      await api.updateProduct(props.id, product.value);
+    } else {
+      await api.createProduct(product.value);
+    }
+    saveDialog.value.isOpen = false;
+    router.push('/');
+  } catch (err) {
+    console.error(err);
+    error.value = 'Failed to save product. Please ensure all fields are valid.';
+    saveDialog.value.isOpen = false;
+  } finally {
+    loading.value = false;
+    saveDialog.value.loading = false;
+  }
+};
+
+onMounted(() => {
+  if (isEdit.value) fetchProduct();
+});
 </script>
-
-<style scoped>
-.form-card {
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-h2 {
-  margin-bottom: 2rem;
-  color: var(--primary-color);
-}
-
-.price-input {
-  position: relative;
-}
-
-.currency-symbol {
-  position: absolute;
-  left: 1rem;
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.price-input input {
-  padding-left: 2rem;
-}
-
-.mt-4 { margin-top: 2rem; }
-.mb-4 { margin-bottom: 1rem; }
-.error-msg {
-  padding: 1rem;
-  background-color: rgba(239, 68, 68, 0.1);
-  border: 1px solid var(--danger-color);
-  color: var(--danger-color);
-  border-radius: 8px;
-}
-</style>

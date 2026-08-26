@@ -1,161 +1,146 @@
 <template>
-  <div class="product-detail-container mx-auto">
-    <div class="mb-4">
-      <router-link to="/" class="back-link">← Back to Dashboard</router-link>
+  <div class="max-w-3xl mx-auto py-6">
+    <div class="mb-6">
+      <router-link to="/" class="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-2">
+        <span>&larr;</span> Back to Dashboard
+      </router-link>
     </div>
 
-    <div v-if="loading" class="text-center py-8">
-      <p>Loading product details...</p>
-    </div>
-
-    <div v-else-if="error" class="error-msg card">
-      <p>{{ error }}</p>
-    </div>
-
-    <div v-else-if="product" class="card detail-card">
-      <div class="detail-header flex items-center justify-between mb-4">
-        <h1>{{ product.name }}</h1>
-        <div class="price-badge">${{ formatPrice(product.price) }}</div>
+    <div v-if="loading" class="flex justify-center items-center py-20 text-muted-foreground">
+      <div class="animate-pulse flex items-center gap-2">
+        <div class="h-4 w-4 bg-primary rounded-full"></div>
+        <p>Loading product details...</p>
       </div>
+    </div>
+
+    <div v-else-if="error" class="p-4 rounded-md bg-destructive/10 text-destructive border border-destructive/20 text-sm font-medium">
+      {{ error }}
+    </div>
+
+    <Card v-else-if="product" class="shadow-lg border-2">
+      <CardHeader class="pb-4">
+        <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div>
+            <CardTitle class="text-3xl font-extrabold tracking-tight mb-2">
+              {{ product.name }}
+            </CardTitle>
+            <div class="flex items-center text-sm text-muted-foreground gap-4">
+              <span>Added: {{ formatDate(product.created_at) }}</span>
+              <span v-if="product.updated_at && product.updated_at !== product.created_at" class="border-l pl-4 border-border/50">
+                Updated: {{ formatDate(product.updated_at) }}
+              </span>
+            </div>
+          </div>
+          <div class="bg-primary text-primary-foreground px-4 py-2 rounded-full font-bold text-xl shadow-sm whitespace-nowrap self-start">
+            ${{ formatPrice(product.price) }}
+          </div>
+        </div>
+      </CardHeader>
       
-      <div class="meta-info mb-4">
-        <span class="text-muted">Added on: {{ formatDate(product.created_at) }}</span>
-        <span class="text-muted ml-4" v-if="product.updated_at && product.updated_at !== product.created_at">
-          Last updated: {{ formatDate(product.updated_at) }}
-        </span>
-      </div>
+      <CardContent class="pt-6 border-t bg-muted/10">
+        <h3 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+          Description
+        </h3>
+        <p v-if="product.description" class="leading-relaxed whitespace-pre-wrap">
+          {{ product.description }}
+        </p>
+        <p v-else class="text-muted-foreground italic">
+          No description provided for this product.
+        </p>
+      </CardContent>
 
-      <div class="description-content">
-        <h3>Description</h3>
-        <p v-if="product.description">{{ product.description }}</p>
-        <p v-else class="text-muted italic">No description provided for this product.</p>
-      </div>
+      <CardFooter class="border-t bg-background px-6 py-4 flex flex-wrap gap-4">
+        <router-link :to="`/edit/${product.id}`">
+          <Button variant="default">Edit Product</Button>
+        </router-link>
+        <Button @click="handleDelete" variant="destructive">
+          Delete Product
+        </Button>
+      </CardFooter>
+    </Card>
 
-      <div class="detail-actions mt-4 pt-4 border-top flex gap-4">
-        <router-link :to="`/edit/${product.id}`" class="btn btn-primary">Edit Product</router-link>
-        <button @click="handleDelete" class="btn btn-danger">Delete Product</button>
-      </div>
-    </div>
+    <ConfirmDialog 
+      :isOpen="deleteDialog.isOpen"
+      title="Delete Product"
+      description="Are you sure you want to delete this product? This action cannot be undone."
+      confirmText="Delete"
+      :loading="deleteDialog.loading"
+      @confirm="executeDelete"
+      @cancel="deleteDialog.isOpen = false"
+    />
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import api from '../services/api';
+import Card from '../components/ui/card/Card.vue';
+import CardHeader from '../components/ui/card/CardHeader.vue';
+import CardTitle from '../components/ui/card/CardTitle.vue';
+import CardContent from '../components/ui/card/CardContent.vue';
+import CardFooter from '../components/ui/card/CardFooter.vue';
+import Button from '../components/ui/button/Button.vue';
+import ConfirmDialog from '../components/ConfirmDialog.vue';
 
-export default {
-  name: 'ProductDetail',
-  props: {
-    id: {
-      type: String,
-      required: true
-    }
-  },
-  data() {
-    return {
-      product: null,
-      loading: true,
-      error: null
-    }
-  },
-  mounted() {
-    this.fetchProduct();
-  },
-  methods: {
-    async fetchProduct() {
-      this.loading = true;
-      try {
-        const response = await api.getProduct(this.id);
-        this.product = response.data;
-      } catch (err) {
-        console.error(err);
-        this.error = 'Failed to load product details.';
-      } finally {
-        this.loading = false;
-      }
-    },
-    async handleDelete() {
-      if (confirm('Are you sure you want to delete this product?')) {
-        try {
-          await api.deleteProduct(this.id);
-          this.$router.push('/');
-        } catch (err) {
-          console.error(err);
-          alert('Failed to delete product.');
-        }
-      }
-    },
-    formatPrice(val) {
-      const num = Number(val);
-      return isNaN(num) ? '0.00' : num.toFixed(2);
-    },
-    formatDate(dateString) {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      return new Intl.DateTimeFormat('en-US', {
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-      }).format(date);
-    }
+const props = defineProps({
+  id: {
+    type: String,
+    required: true
   }
-}
+});
+
+const router = useRouter();
+const product = ref(null);
+const loading = ref(true);
+const error = ref(null);
+const deleteDialog = ref({ isOpen: false, loading: false });
+
+const fetchProduct = async () => {
+  loading.value = true;
+  try {
+    const response = await api.getProduct(props.id);
+    product.value = response.data;
+  } catch (err) {
+    console.error(err);
+    error.value = 'Failed to load product details.';
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleDelete = () => {
+  deleteDialog.value = { isOpen: true, loading: false };
+};
+
+const executeDelete = async () => {
+  deleteDialog.value.loading = true;
+  try {
+    await api.deleteProduct(props.id);
+    router.push('/');
+  } catch (err) {
+    console.error(err);
+    alert('Failed to delete product.');
+  } finally {
+    deleteDialog.value.loading = false;
+  }
+};
+
+const formatPrice = (val) => {
+  const num = Number(val);
+  return isNaN(num) ? '0.00' : num.toFixed(2);
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  }).format(date);
+};
+
+onMounted(() => {
+  fetchProduct();
+});
 </script>
-
-<style scoped>
-.product-detail-container {
-  max-width: 800px;
-}
-
-.back-link {
-  color: var(--text-muted);
-  text-decoration: none;
-  font-weight: 500;
-}
-.back-link:hover {
-  color: var(--primary-color);
-}
-
-.detail-card {
-  padding: 2.5rem;
-}
-
-.price-badge {
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
-  color: white;
-  padding: 0.5rem 1.2rem;
-  border-radius: 999px;
-  font-size: 1.25rem;
-  font-weight: 700;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-}
-
-.description-content {
-  background-color: rgba(15, 23, 42, 0.4);
-  padding: 1.5rem;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  margin-top: 2rem;
-}
-
-.description-content h3 {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 1rem;
-}
-
-.description-content p {
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
-.border-top {
-  border-top: 1px solid var(--border-color);
-}
-
-.pt-4 { padding-top: 2rem; }
-.mb-4 { margin-bottom: 1.5rem; }
-.mt-4 { margin-top: 2rem; }
-.ml-4 { margin-left: 1.5rem; }
-.italic { font-style: italic; }
-</style>

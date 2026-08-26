@@ -1,26 +1,34 @@
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: 'http://localhost:3000/api', // adjust if backend port is different
-  headers: {
-    'Content-Type': 'application/json'
+class ApiService {
+  constructor() {
+    this.api = axios.create({
+      baseURL: 'http://localhost:3000/api',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
   }
-});
 
-export default {
-  getProducts() {
-    return api.get('/products');
-  },
-  getProduct(id) {
-    return api.get(`/products/${id}`);
-  },
-  createProduct(data) {
-    return api.post('/products', data);
-  },
-  updateProduct(id, data) {
-    return api.put(`/products/${id}`, data);
-  },
-  deleteProduct(id) {
-    return api.delete(`/products/${id}`);
+  getProducts(search = '') {
+    return this.api.get('/products', { params: { search } });
   }
-};
+
+  getProduct(id) {
+    return this.api.get(`/products/${id}`);
+  }
+
+  createProduct(data) {
+    return this.api.post('/products', data);
+  }
+
+  updateProduct(id, data) {
+    return this.api.put(`/products/${id}`, data);
+  }
+
+  deleteProduct(id) {
+    return this.api.delete(`/products/${id}`);
+  }
+}
+
+export default new ApiService();

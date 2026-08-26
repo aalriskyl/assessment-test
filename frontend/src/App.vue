@@ -1,20 +1,24 @@
 <template>
-  <div class="app-layout">
-    <header class="app-header">
-      <div class="container flex items-center justify-between">
-        <router-link to="/" class="logo">
-          <h2>📦 Nexus Inventory</h2>
+  <div class="min-h-screen bg-background text-foreground flex flex-col font-sans">
+    <header class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div class="container mx-auto flex h-14 items-center justify-between px-4 md:px-8">
+        <router-link to="/" class="flex items-center space-x-2">
+          <span class="font-bold sm:inline-block text-xl">Inventory</span>
         </router-link>
-        <nav>
-          <router-link to="/" class="nav-link">Dashboard</router-link>
-          <router-link to="/create" class="nav-link btn btn-primary ml-4">
-            + New Product
+        <nav class="flex items-center space-x-6 text-sm font-medium">
+          <router-link to="/" class="transition-colors hover:text-foreground/80 text-foreground/60">
+            Dashboard
+          </router-link>
+          <router-link to="/create">
+            <Button size="sm">
+              + New Product
+            </Button>
           </router-link>
         </nav>
       </div>
     </header>
 
-    <main class="container app-main">
+    <main class="flex-1 container mx-auto px-4 md:px-8 py-8">
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
           <component :is="Component" />
@@ -24,51 +28,16 @@
   </div>
 </template>
 
-<style scoped>
-.app-header {
-  background-color: var(--card-bg);
-  border-bottom: 1px solid var(--border-color);
-  padding: 0.5rem 0;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
+<script setup>
+import Button from './components/ui/button/Button.vue';
+</script>
 
-.logo h2 {
-  margin: 0;
-  color: var(--text-main);
-  font-weight: 700;
-  letter-spacing: -0.5px;
-}
-
-.nav-link {
-  color: var(--text-muted);
-  font-weight: 500;
-  margin-left: 1.5rem;
-}
-
-.nav-link.router-link-active {
-  color: var(--text-main);
-}
-
-.nav-link.btn {
-  color: white; /* preserve btn text color */
-}
-
-.app-main {
-  padding-top: 2rem;
-  padding-bottom: 4rem;
-}
-
-.ml-4 { margin-left: 1rem; }
-
-/* Transitions */
+<style>
+/* Base transition styles */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
-
 .fade-enter-from {
   opacity: 0;
   transform: translateY(10px);

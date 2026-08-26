@@ -1,89 +1,54 @@
 <template>
-  <div class="card product-card">
-    <div class="card-body">
-      <h3 class="product-title">{{ product.name }}</h3>
-      <p class="product-desc">{{ truncatedDescription }}</p>
-      
-      <div class="product-footer flex items-center justify-between">
-        <span class="price">${{ formatPrice(product.price) }}</span>
-        
-        <div class="actions flex gap-2">
-          <router-link :to="`/product/${product.id}`" class="btn btn-secondary btn-sm">
-            View
-          </router-link>
-          <router-link :to="`/edit/${product.id}`" class="btn btn-secondary btn-sm">
-            Edit
-          </router-link>
-          <button @click="$emit('delete', product.id)" class="btn btn-danger btn-sm">
-            Delete
-          </button>
-        </div>
+  <Card class="flex flex-col h-full hover:shadow-lg transition-all duration-300 group">
+    <CardHeader>
+      <CardTitle class="text-xl text-primary group-hover:text-blue-500 transition-colors">
+        {{ product.name }}
+      </CardTitle>
+    </CardHeader>
+    <CardContent class="flex-1">
+      <p class="text-muted-foreground text-sm line-clamp-3 mb-4">
+        {{ product.description || 'No description available.' }}
+      </p>
+      <div class="text-2xl font-bold tracking-tight">
+        ${{ formatPrice(product.price) }}
       </div>
-    </div>
-  </div>
+    </CardContent>
+    <CardFooter class="flex justify-between items-center gap-2 pt-4 border-t border-border/50">
+      <div class="flex space-x-2">
+        <router-link :to="`/product/${product.id}`">
+          <Button variant="secondary" size="sm">View</Button>
+        </router-link>
+        <router-link :to="`/edit/${product.id}`">
+          <Button variant="outline" size="sm">Edit</Button>
+        </router-link>
+      </div>
+      <Button variant="destructive" size="sm" @click="$emit('delete', product.id)">
+        Delete
+      </Button>
+    </CardFooter>
+  </Card>
 </template>
 
-<script>
-export default {
-  name: 'ProductCard',
-  props: {
-    product: {
-      type: Object,
-      required: true
-    }
-  },
-  computed: {
-    truncatedDescription() {
-      if (!this.product.description) return 'No description available.';
-      return this.product.description.length > 80 
-        ? this.product.description.substring(0, 80) + '...'
-        : this.product.description;
-    }
-  },
-  methods: {
-    formatPrice(val) {
-      const num = Number(val);
-      return isNaN(num) ? '0.00' : num.toFixed(2);
-    }
+<script setup>
+import { computed } from 'vue';
+import Card from './ui/card/Card.vue';
+import CardHeader from './ui/card/CardHeader.vue';
+import CardTitle from './ui/card/CardTitle.vue';
+import CardContent from './ui/card/CardContent.vue';
+import CardFooter from './ui/card/CardFooter.vue';
+import Button from './ui/button/Button.vue';
+
+const props = defineProps({
+  product: {
+    type: Object,
+    required: true
   }
-}
+});
+
+defineEmits(['delete']);
+
+const formatPrice = (val) => {
+  const num = Number(val);
+  return isNaN(num) ? '0.00' : num.toFixed(2);
+};
 </script>
-
-<style scoped>
-.product-card {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.card-body {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-}
-
-.product-title {
-  margin-bottom: 0.5rem;
-  font-size: 1.25rem;
-  color: var(--primary-color);
-}
-
-.product-desc {
-  color: var(--text-muted);
-  font-size: 0.95rem;
-  line-height: 1.5;
-  flex: 1;
-  margin-bottom: 1.5rem;
-}
-
-.price {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-main);
-}
-
-.btn-sm {
-  padding: 0.4rem 0.8rem;
-  font-size: 0.85rem;
-}
-</style>
